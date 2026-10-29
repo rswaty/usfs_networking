@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.venv/
+__pycache__/
+*.pyc
+data/*
+!data/.gitkeep

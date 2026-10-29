@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#10211a">
+  <title>Canopy — USFS and TNC</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,520;9..144,640&family=Outfit:wght@380;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div id="boot" role="status">Canopy</div>
+
+  <div id="app-view" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 27c0-7 3.4-12 11-14-1.6 8.6-6.6 14-11 14z" fill="#e4c56a"/>
+          <path d="M16 27C16 19 12 13 5 11.2 7.6 21 11.4 27 16 27z" fill="#8fb573"/>
+          <path d="M16 27V9" stroke="#f3f0e6" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <p class="brand-name">Canopy</p>
+          <p class="brand-sub">USFS and TNC</p>
+        </div>
+      </div>
+      <p id="stats" class="stats"></p>
+      <label class="search">
+        <span class="sr-only">Find a person</span>
+        <input id="search" type="search" placeholder="Find a person" autocomplete="off">
+      </label>
+    </header>
+
+    <main>
+      <aside>
+        <form id="add-form" class="card composer" novalidate>
+          <h2>Add a partnership</h2>
+          <p class="hint">One TNC person, one USFS person, where, and why.</p>
+          <label class="field">
+            <span>TNC employee</span>
+            <input id="tnc-name" type="text" placeholder="Jordan Lee" maxlength="80" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>USFS employee</span>
+            <input id="usfs-name" type="text" placeholder="Alex Rivera" maxlength="80" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Forest or branch</span>
+            <input id="place" type="text" placeholder="Gila National Forest" maxlength="80" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Purpose</span>
+            <input id="purpose" type="text" placeholder="Shared fire restoration" maxlength="140" autocomplete="off">
+          </label>
+          <p id="add-error" class="form-error" role="alert" hidden></p>
+          <button class="primary" id="add-submit" type="submit">Add to the map</button>
+        </form>
+
+        <section class="card mine-card" aria-labelledby="mine-heading">
+          <h2 id="mine-heading">Partnerships</h2>
+          <div id="mine"></div>
+        </section>
+
+        <section class="card cloud-card" aria-labelledby="cloud-heading">
+          <h2 id="cloud-heading">Purpose words</h2>
+          <div id="cloud"></div>
+        </section>
+      </aside>
+
+      <section class="stage" aria-label="Colleague network">
+        <canvas id="grove"></canvas>
+        <div id="detail" class="card detail" hidden></div>
+        <div id="tip" class="tip" hidden></div>
+        <ul class="legend">
+          <li><i class="swatch usfs"></i> USFS</li>
+          <li><i class="swatch tnc"></i> TNC</li>
+        </ul>
+        <button type="button" class="ghost fit" id="fit">Center map</button>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" role="status" hidden></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
