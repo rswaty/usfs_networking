@@ -38,8 +38,8 @@
     <main>
       <aside>
         <form id="add-form" class="card composer" novalidate>
-          <h2>Add a partnership</h2>
-          <p class="hint">One TNC person, one USFS person, where, and why.</p>
+          <h2 id="form-heading">Add a partnership</h2>
+          <p class="hint" id="form-hint">One TNC person, one USFS person, where, and why.</p>
           <label class="field">
             <span>TNC employee</span>
             <input id="tnc-name" type="text" placeholder="Jordan Lee" maxlength="80" autocomplete="off">
@@ -57,7 +57,10 @@
             <input id="purpose" type="text" placeholder="Shared fire restoration" maxlength="140" autocomplete="off">
           </label>
           <p id="add-error" class="form-error" role="alert" hidden></p>
-          <button class="primary" id="add-submit" type="submit">Add to the map</button>
+          <div class="form-actions">
+            <button class="primary" id="add-submit" type="submit">Add to the map</button>
+            <button class="ghost" id="cancel-edit" type="button" data-action="cancel-edit" hidden>Cancel</button>
+          </div>
         </form>
 
         <section class="card mine-card" aria-labelledby="mine-heading">

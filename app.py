@@ -308,18 +308,23 @@ def person_for_side(db, name: str, org: str, office: str = ""):
     return person, None
 
 
+def read_partnership(data: dict):
+    tnc_name = clean_name(data.get("tnc_name"))
+    usfs_name = clean_name(data.get("usfs_name"))
+    place = clean_phrase(data.get("place"), "the forest or branch", 80)
+    purpose = clean_phrase(data.get("purpose"), "the purpose", 140)
+    if name_key(tnc_name) == name_key(usfs_name):
+        raise ValueError("Enter two different people, one from TNC and one from USFS.")
+    return tnc_name, usfs_name, place, purpose
+
+
 @app.post("/api/connections")
 def add_connection():
     data = request.get_json(silent=True) or {}
     try:
-        tnc_name = clean_name(data.get("tnc_name"))
-        usfs_name = clean_name(data.get("usfs_name"))
-        place = clean_phrase(data.get("place"), "the forest or branch", 80)
-        purpose = clean_phrase(data.get("purpose"), "the purpose", 140)
+        tnc_name, usfs_name, place, purpose = read_partnership(data)
     except ValueError as exc:
         return fail(str(exc))
-    if name_key(tnc_name) == name_key(usfs_name):
-        return fail("Enter two different people, one from TNC and one from USFS.")
 
     db = get_db()
     tnc, error = person_for_side(db, tnc_name, "tnc")
@@ -353,6 +358,50 @@ def add_connection():
     payload["focus_id"] = usfs["id"]
     payload["message"] = message
     return jsonify(payload), 201
+
+
+@app.patch("/api/connections/<int:link_id>")
+def update_connection(link_id: int):
+    data = request.get_json(silent=True) or {}
+    try:
+        tnc_name, usfs_name, place, purpose = read_partnership(data)
+    except ValueError as exc:
+        return fail(str(exc))
+
+    db = get_db()
+    row = db.execute("SELECT * FROM links WHERE id = ?", (link_id,)).fetchone()
+    if row is None:
+        return fail("That partnership is already gone.", 404)
+    previous = (row["tnc_id"], row["usfs_id"])
+    tnc, error = person_for_side(db, tnc_name, "tnc")
+    if error:
+        return error
+    usfs, error = person_for_side(db, usfs_name, "usfs", place)
+    if error:
+        return error
+    clash = db.execute(
+        "SELECT id FROM links WHERE tnc_id = ? AND usfs_id = ? AND id != ?",
+        (tnc["id"], usfs["id"], link_id),
+    ).fetchone()
+    if clash:
+        db.rollback()
+        return fail("That pair is already on the map.")
+    db.execute(
+        """
+        UPDATE links
+        SET tnc_id = ?, usfs_id = ?, place = ?, purpose = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (tnc["id"], usfs["id"], place, purpose, now(), link_id),
+    )
+    for person_id in previous:
+        if person_id not in (tnc["id"], usfs["id"]):
+            prune_person(db, person_id)
+    db.commit()
+    payload = network_payload()
+    payload["focus_id"] = usfs["id"]
+    payload["message"] = f"Updated {tnc['name']} and {usfs['name']}."
+    return jsonify(payload)
 
 
 @app.delete("/api/connections/<int:link_id>")

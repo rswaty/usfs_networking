@@ -313,7 +313,16 @@ h2 {
   gap: 4px;
   border-radius: 12px;
 }
-.tie.is-selected { background: rgba(228, 197, 106, 0.1); }
+.tie.is-selected, .tie.is-editing { background: rgba(228, 197, 106, 0.1); }
+.form-actions { display: flex; gap: 8px; align-items: center; }
+.form-actions .primary { width: auto; flex: 1; }
+.edit {
+  background: none;
+  border: 0;
+  color: var(--gold);
+  padding: 8px;
+}
+.edit:hover { color: #f4f1e7; }
 .who, .textish {
   background: none;
   border: 0;

@@ -11,6 +11,7 @@ const state = {
   links: [],
   query: "",
   selectedId: null,
+  editingId: null,
 };
 
 const positions = new Map();
@@ -106,11 +107,16 @@ function applyNetwork(data, { refit = false } = {}) {
   state.people = data.people;
   state.links = data.links;
   if (state.selectedId && !personById(state.selectedId)) state.selectedId = null;
+  if (state.editingId && !state.links.some((link) => link.id === state.editingId)) {
+    state.editingId = null;
+    clearPartnershipForm();
+  }
   syncGraph();
   renderChrome();
   renderMine();
   renderCloud();
   renderDetail();
+  paintFormMode();
   if (changed) energy = Math.max(energy, 0.85);
   if (refit) {
     userMoved = false;
@@ -162,7 +168,8 @@ function renderMine() {
     if (!pair.tnc || !pair.usfs) return;
     const row = document.createElement("div");
     row.className = "tie";
-    if (pair.tnc.id === state.selectedId || pair.usfs.id === state.selectedId) row.classList.add("is-selected");
+    if (link.id === state.editingId) row.classList.add("is-editing");
+    else if (pair.tnc.id === state.selectedId || pair.usfs.id === state.selectedId) row.classList.add("is-selected");
     const who = document.createElement("button");
     who.type = "button";
     who.className = "who";
@@ -174,6 +181,12 @@ function renderMine() {
     sub.className = "sub";
     sub.textContent = `${link.place} — ${link.purpose}`;
     who.append(strong, sub);
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "edit";
+    edit.dataset.action = "edit";
+    edit.dataset.id = String(link.id);
+    edit.textContent = "Edit";
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "remove";
@@ -182,7 +195,7 @@ function renderMine() {
     remove.dataset.name = `${pair.tnc.name} and ${pair.usfs.name}`;
     remove.setAttribute("aria-label", `Remove ${pair.tnc.name} and ${pair.usfs.name}`);
     remove.textContent = "Remove";
-    row.append(who, remove);
+    row.append(who, edit, remove);
     host.append(row);
   });
 }
@@ -278,6 +291,15 @@ function renderDetail() {
         jump.append(line);
       });
       block.append(jump);
+      group.reports.forEach((report) => {
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "edit";
+        edit.dataset.action = "edit";
+        edit.dataset.id = String(report.id);
+        edit.textContent = "Edit";
+        block.append(edit);
+      });
       group.reports.forEach((report) => {
         const remove = document.createElement("button");
         remove.type = "button";
@@ -754,12 +776,57 @@ document.querySelector("#search").addEventListener("input", (event) => {
   else wake();
 });
 
+function clearPartnershipForm() {
+  document.querySelector("#tnc-name").value = "";
+  document.querySelector("#usfs-name").value = "";
+  document.querySelector("#place").value = "";
+  document.querySelector("#purpose").value = "";
+  showError("#add-error", "");
+}
+
+function paintFormMode() {
+  const editing = Boolean(state.editingId);
+  document.querySelector("#form-heading").textContent = editing ? "Edit a partnership" : "Add a partnership";
+  document.querySelector("#form-hint").textContent = editing
+    ? "Change the names, forest, or purpose, then save."
+    : "One TNC person, one USFS person, where, and why.";
+  document.querySelector("#add-submit").textContent = editing ? "Save changes" : "Add to the map";
+  document.querySelector("#cancel-edit").hidden = !editing;
+}
+
+function beginEdit(linkId) {
+  const link = state.links.find((item) => item.id === linkId);
+  if (!link) return;
+  const pair = pairPeople(link);
+  if (!pair.tnc || !pair.usfs) return;
+  state.editingId = link.id;
+  document.querySelector("#tnc-name").value = pair.tnc.name;
+  document.querySelector("#usfs-name").value = pair.usfs.name;
+  document.querySelector("#place").value = link.place;
+  document.querySelector("#purpose").value = link.purpose;
+  showError("#add-error", "");
+  paintFormMode();
+  renderMine();
+  document.querySelector("#form-heading").scrollIntoView({ block: "nearest" });
+  document.querySelector("#purpose").focus();
+}
+
+function cancelEdit() {
+  state.editingId = null;
+  clearPartnershipForm();
+  paintFormMode();
+  renderMine();
+  document.querySelector("#tnc-name").focus();
+}
+
 document.body.addEventListener("click", async (event) => {
   const action = event.target.closest("[data-action]");
   if (!action) return;
   const kind = action.dataset.action;
   if (kind === "focus") selectPerson(Number(action.dataset.id));
   if (kind === "clear") selectPerson(null);
+  if (kind === "edit") beginEdit(Number(action.dataset.id));
+  if (kind === "cancel-edit") cancelEdit();
   if (kind === "word") {
     const search = document.querySelector("#search");
     search.value = action.dataset.word;
@@ -785,12 +852,14 @@ document.querySelector("#add-form").addEventListener("submit", async (event) => 
   const place = document.querySelector("#place").value;
   const purpose = document.querySelector("#purpose").value;
   const button = document.querySelector("#add-submit");
+  const editing = state.editingId;
   button.disabled = true;
   try {
-    const data = await api("/api/connections", {
-      method: "POST",
+    const data = await api(editing ? `/api/connections/${editing}` : "/api/connections", {
+      method: editing ? "PATCH" : "POST",
       body: { tnc_name: tncName, usfs_name: usfsName, place, purpose },
     });
+    state.editingId = null;
     document.querySelector("#tnc-name").value = "";
     document.querySelector("#usfs-name").value = "";
     document.querySelector("#purpose").value = "";
@@ -807,7 +876,9 @@ document.querySelector("#add-form").addEventListener("submit", async (event) => 
 
 document.addEventListener("keydown", (event) => {
   const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName);
-  if (event.key === "Escape") {
+  if (event.key === "Escape" && state.editingId) {
+    cancelEdit();
+  } else if (event.key === "Escape") {
     state.query = "";
     document.querySelector("#search").value = "";
     selectPerson(null);
